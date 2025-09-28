@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>ID Music, Video & Photo Player</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='24' fill='%2328a745'/%3E%3Cpath d='M32 13v16.5a5.5 5.5 0 1 1-2-4.2V17h-8v12.5a5.5 5.5 0 1 1-2-4.2V13h12z' fill='white'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --bg-light: #f8f9fa;
+            --bg-dark: #343a40;
+            --text-light: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-light);
+            padding: 20px;
+            color: #333;
+        }
+        #app {
+            max-width: 800px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .logo-area h2 {
+            margin: 0;
+            color: var(--primary);
+        }
+        button, input[type="text"], input[type="file"] {
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        .btn-primary { background-color: var(--primary); }
+        .btn-success { background-color: var(--success); }
+        .btn-danger { background-color: var(--danger); }
+        button:hover { opacity: 0.9; }
+        input[type="text"] {
+            width: calc(100% - 30px);
+            border: 1px solid #ccc;
+        }
+        .media-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background-color: #eee;
+            border-radius: 6px;
+        }
+        .media-item button {
+            margin: 0 5px;
+            padding: 8px 12px;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .play-button {
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            flex-grow: 1;
+            text-align: left;
+        }
+        .delete-button {
+            background-color: var(--danger);
+        }
+        #player-container {
+            width: 100%;
+            min-height: 50px; 
+            background: black;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+        .player-element {
+            width: 100%;
+            display: block;
+        }
+        #player-area {
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: opacity 0.5s, max-height 0.3s;
+        }
+        #player-area.active {
+            opacity: 1;
+            max-height: 600px; 
+        }
+        hr {
+            margin: 25px 0;
+            border: 0;
+            border-top: 1px solid #eee;
+        }
+        #app.drag-over {
+            border: 3px dashed var(--primary);
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+        .edit-input {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--primary);
+            flex-grow: 1;
+            font-size: 14px;
+            margin: 0;
+        }
+        /* Fotoğraf çekme alanı */
+        #photo-section {
+            margin-bottom: 20px;
+        }
+        #camera-area {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        #photo-preview-area {
+            margin-top: 10px;
+            display: none;
+        }
+        #photo-preview {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        @media (max-width: 600px) {
+            #app {
+                max-width: 100vw;
+                margin: 0;
+                padding: 8vw 2vw 4vw 2vw;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            .logo-area svg {
+                width: 36px;
+                height: 36px;
+            }
+            h2 {
+                font-size: 1.2em;
+            }
+            h3 {
+                font-size: 1em;
+            }
+            button, input[type="text"], input[type="file"] {
+                font-size: 15px;
+                padding: 8px 8px;
+            }
+            .media-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+            #player-container video, #player-container audio {
+                min-height: 40px;
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Logo -->
+        <div class="logo-area">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="24" cy="24" r="24" fill="#28a745"/>
+                <g>
+                    <path d="M32 13v16.5a5.5 5.5 0 1 1-2-4.2V17h-8v12.5a5.5 5.5 0 1 1-2-4.2V13h12z" fill="#fff"/>
+                </g>
+            </svg>
+            <h2>ID Music, Video & Photo Player</h2>
+        </div>
+        <h3>Dosya Yükle (Müzik, Video veya Fotoğraf) <br> (Veya Pencereye Sürükle-Bırak)</h3>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <input type="file" id="media-file-input" accept="audio/*,video/*,image/*" style="flex-grow: 1;">
+            <button class="btn-success" onclick="uploadMedia()" style="margin-top: 0;">Dosyayı Aç</button>
+        </div>
+        <hr>
+        <!-- Fotoğraf çekme bölümü -->
+        <div id="photo-section">
+            <h3>Fotoğraf Çek</h3>
+            <button class="btn-primary" onclick="openCamera()">Kamerayı Aç</button>
+            <div id="camera-area">
+                <video id="camera-video" autoplay playsinline style="max-width:100%; border-radius:8px; background:#000;"></video>
+                <button class="btn-success" onclick="takePhoto()">Fotoğraf Çek</button>
+                <button class="btn-danger" onclick="closeCamera()">Kapat</button>
+            </div>
+            <div id="photo-preview-area">
+                <h4>Çekilen Fotoğraf:</h4>
+                <img id="photo-preview">
+                <a id="download-photo-link" class="btn-success" download="fotoğraf.png" style="display:inline-block; margin-top:10px;">Cihaza Kaydet</a>
+            </div>
+        </div>
+        <hr>
+        <div id="player-area">
+            <h3>Şu An Oynatılan: <span id="current-title-display" style="color: var(--primary);">Seçilmedi</span></h3>
+            <div id="player-container"></div>
+            <div id="player-controls" style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
+                <button class="btn-primary" onclick="seekMedia(-10)">⏪ 10 sn Geri</button>
+                <button class="btn-primary" onclick="seekMedia(10)">10 sn İleri ⏩</button>
+                <button class="btn-danger" onclick="closeMedia()" id="close-media-btn">Kapat</button>
+            </div>
+        </div>
+        <hr>
+        <div id="media-list"></div>
+    </div>
+    <script>
+        // Medya oynatıcı kodları
+        const MEDIA_KEY = 'uploadedMedia';
+
+        const appElement = document.getElementById('app');
+        const mediaFileInput = document.getElementById('media-file-input');
+        const mediaList = document.getElementById('media-list');
+        const playerArea = document.getElementById('player-area');
+        const playerContainer = document.getElementById('player-container');
+        const currentTitleDisplay = document.getElementById('current-title-display');
+
+        function getLocalStorageData(key) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                localStorage.removeItem(key);
+                return [];
+            }
+        }
+
+        function uploadMedia() {
+            const file = mediaFileInput.files[0];
+            if (!file) {
+                alert('Lütfen bir medya dosyası seçin (Müzik, Video veya Fotoğraf).');
+                return;
+            }
+            processFileAndPlay(file, true);
+        }
+
+        function processFileAndPlay(file, save = true) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const mediaDataURL = event.target.result;
+                const media = {
+                    id: Date.now(),
+                    name: file.name,
+                    dataUrl: mediaDataURL,
+                    type: file.type
+                };
+                playMedia(media);
+                if (save) {
+                    saveMediaToLibrary(media);
+                }
+            };
+            reader.readAsDataURL(file);
+            mediaFileInput.value = '';
+        }
+
+        function saveMediaToLibrary(media) {
+            let allMedia = getLocalStorageData(MEDIA_KEY);
+            allMedia.push(media);
+            localStorage.setItem(MEDIA_KEY, JSON.stringify(allMedia));
+            loadMediaList();
+        }
+
+        function playMedia(media) {
+            playerArea.classList.add('active');
+            currentTitleDisplay.textContent = media.name;
+            playerContainer.innerHTML = '';
+            let playerElement;
+            if (media.type.startsWith('video/')) {
+                playerElement = document.createElement('video');
+                playerElement.style.height = window.innerWidth < 600 ? '180px' : '400px';
+                playerContainer.style.background = 'black';
+                playerElement.controls = true;
+                playerElement.src = media.dataUrl;
+                setTimeout(() => { playerElement.play().catch(()=>{}); }, 100);
+            } else if (media.type.startsWith('audio/')) {
+                playerElement = document.createElement('audio');
+                playerContainer.style.background = '#333';
+                playerElement.controls = true;
+                playerElement.src = media.dataUrl;
+                setTimeout(() => { playerElement.play().catch(()=>{}); }, 100);
+            } else if (media.type.startsWith('image/')) {
+                playerElement = document.createElement('img');
+                playerElement.src = media.dataUrl;
+                playerElement.style.maxWidth = '100%';
+                playerElement.style.maxHeight = window.innerWidth < 600 ? '180px' : '400px';
+                playerContainer.style.background = '#222';
+            } else {
+                playerContainer.innerHTML = '<p>Bu dosya türü desteklenmiyor.</p>';
+                return;
+            }
+            playerElement.classList.add('player-element');
+            playerContainer.appendChild(playerElement);
+            playerContainer.dataset.currentId = media.id;
+        }
+
+        function seekMedia(timeChange) {
+            const playerElement = playerContainer.querySelector('.player-element');
+            if (playerElement && (playerElement.tagName === "AUDIO" || playerElement.tagName === "VIDEO") && playerElement.duration) {
+                playerElement.currentTime += timeChange;
+            } else {
+                alert('Oynatılacak bir medya seçiniz.');
+            }
+        }
+
+        function closeMedia() {
+            playerContainer.innerHTML = '';
+            currentTitleDisplay.textContent = 'Seçilmedi';
+            playerArea.classList.remove('active');
+        }
+
+        function startEditMedia(mediaId, originalName, itemDiv) {
+            itemDiv.innerHTML = '';
+            const editInput = document.createElement('input');
+            editInput.type = 'text';
+            editInput.classList.add('edit-input');
+            editInput.value = originalName;
+            editInput.id = `edit-input-${mediaId}`;
+            const saveButton = document.createElement('button');
+            saveButton.classList.add('btn-success');
+            saveButton.textContent = 'Kaydet';
+            saveButton.onclick = () => saveEditedMediaName(mediaId, editInput.value);
+            const cancelButton = document.createElement('button');
+            cancelButton.classList.add('btn-primary');
+            cancelButton.textContent = 'İptal';
+            cancelButton.onclick = () => loadMediaList();
+            itemDiv.appendChild(editInput);
+            itemDiv.appendChild(saveButton);
+            itemDiv.appendChild(cancelButton);
+        }
+
+        function saveEditedMediaName(mediaId, newName) {
+            const trimmedName = newName.trim();
+            if (trimmedName.length < 1) {
+                alert('Medya adı boş olamaz.');
+                return;
+            }
+            let allMedia = getLocalStorageData(MEDIA_KEY);
+            const mediaIndex = allMedia.findIndex(media => media.id === mediaId);
+            if (mediaIndex !== -1) {
+                allMedia[mediaIndex].name = trimmedName;
+                localStorage.setItem(MEDIA_KEY, JSON.stringify(allMedia));
+                loadMediaList();
+                if (playerContainer.dataset.currentId == mediaId) {
+                    currentTitleDisplay.textContent = trimmedName;
+                }
+            } else {
+                alert('Hata: Medya bulunamadı.');
+                loadMediaList();
+            }
+        }
+
+        function deleteMedia(mediaId) {
+            if (!confirm('Bu dosyayı silmek istediğinizden emin misiniz?')) {
+                return;
+            }
+            let allMedia = getLocalStorageData(MEDIA_KEY);
+            const updatedMedia = allMedia.filter(media => media.id !== mediaId);
+            localStorage.setItem(MEDIA_KEY, JSON.stringify(updatedMedia));
+            if (playerContainer.dataset.currentId == mediaId) {
+                closeMedia();
+            }
+            loadMediaList();
+        }
+
+        function loadMediaList() {
+            mediaList.innerHTML = '';
+            const allMedia = getLocalStorageData(MEDIA_KEY);
+            if (allMedia.length === 0) {
+                mediaList.innerHTML = '<p>Henüz yüklediğiniz medya (Müzik/Video/Fotoğraf) yok. Hemen yükleyerek başlayın!</p>';
+                return;
+            }
+            allMedia.forEach((media) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.classList.add('media-item');
+                let mediaIcon = '🎵 (Müzik)';
+                if (media.type.startsWith('video/')) mediaIcon = '🎬 (Video)';
+                else if (media.type.startsWith('image/')) mediaIcon = '🖼️ (Fotoğraf)';
+                const playButton = document.createElement('button');
+                playButton.classList.add('play-button');
+                playButton.textContent = `${mediaIcon} ${media.name}`;
+                playButton.onclick = () => playMedia(media);
+                const editButton = document.createElement('button');
+                editButton.classList.add('btn-primary');
+                editButton.textContent = 'Düzenle';
+                editButton.onclick = () => startEditMedia(media.id, media.name, itemDiv);
+                const deleteButton = document.createElement('button');
+                deleteButton.classList.add('delete-button');
+                deleteButton.textContent = 'Sil';
+                deleteButton.onclick = () => deleteMedia(media.id);
+                itemDiv.appendChild(playButton);
+                itemDiv.appendChild(editButton);
+                itemDiv.appendChild(deleteButton);
+                mediaList.appendChild(itemDiv);
+            });
+        }
+
+        function addDragDropListeners() {
+            appElement.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                appElement.classList.add('drag-over');
+            }, false);
+            appElement.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                appElement.classList.remove('drag-over');
+            }, false);
+            appElement.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                appElement.classList.remove('drag-over');
+                if (e.dataTransfer && e.dataTransfer.files.length) {
+                    const file = e.dataTransfer.files[0];
+                    if (
+                        file.type.startsWith('audio/') ||
+                        file.type.startsWith('video/') ||
+                        file.type.startsWith('image/')
+                    ) {
+                        processFileAndPlay(file, true);
+                    } else {
+                        alert('Lütfen sadece ses, video veya fotoğraf dosyası sürükleyiniz.');
+                    }
+                }
+            }, false);
+        }
+
+        // Mobilde video oynatıcıya tam ekran butonu ekle
+        function addMobileFullscreen() {
+            if (window.innerWidth < 600) {
+                const observer = new MutationObserver(() => {
+                    const video = playerContainer.querySelector('video');
+                    if (video && !video.hasAttribute('data-fs')) {
+                        video.setAttribute('data-fs', '1');
+                        // Basit bir tam ekran butonu ekle
+                        const fsBtn = document.createElement('button');
+                        fsBtn.textContent = "Tam Ekran";
+                        fsBtn.className = "btn-primary";
+                        fsBtn.style.position = "absolute";
+                        fsBtn.style.right = "10px";
+                        fsBtn.style.top = "10px";
+                        fsBtn.style.zIndex = "10";
+                        fsBtn.onclick = () => {
+                            if (video.requestFullscreen) video.requestFullscreen();
+                            else if (video.webkitRequestFullscreen) video.webkitRequestFullscreen();
+                        };
+                        const wrap = document.createElement('div');
+                        wrap.style.position = "relative";
+                        wrap.appendChild(video.cloneNode(true));
+                        wrap.appendChild(fsBtn);
+                        playerContainer.innerHTML = "";
+                        playerContainer.appendChild(wrap);
+                    }
+                });
+                observer.observe(playerContainer, { childList: true, subtree: true });
+            }
+        }
+
+        // FOTOĞRAF ÇEKME KODLARI
+        let cameraStream = null;
+
+        function openCamera() {
+            const cameraArea = document.getElementById('camera-area');
+            const video = document.getElementById('camera-video');
+            cameraArea.style.display = 'flex';
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    cameraStream = stream;
+                    video.srcObject = stream;
+                })
+                .catch(() => {
+                    alert('Kamera açılamadı. İzin verildiğinden emin olun.');
+                    cameraArea.style.display = 'none';
+                });
+        }
+
+        function closeCamera() {
+            const cameraArea = document.getElementById('camera-area');
+            cameraArea.style.display = 'none';
+            const video = document.getElementById('camera-video');
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            video.srcObject = null;
+        }
+
+        function takePhoto() {
+            const video = document.getElementById('camera-video');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/png');
+            // Önizleme ve indirme linki
+            document.getElementById('photo-preview').src = dataUrl;
+            const downloadLink = document.getElementById('download-photo-link');
+            downloadLink.href = dataUrl;
+            document.getElementById('photo-preview-area').style.display = 'block';
+            closeCamera();
+        }
+
+        // Başlatıcılar
+        loadMediaList();
+        addDragDropListeners();
+        addMobileFullscreen();
+    </script>
+</body>
+</html>
